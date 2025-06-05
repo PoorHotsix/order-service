@@ -6,7 +6,6 @@ import java.util.List;
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import com.inkcloud.order_service.dto.MemberInfo;
 import com.inkcloud.order_service.enums.OrderState;
 
 import jakarta.persistence.CascadeType;
@@ -72,4 +71,15 @@ public class Order {
         this.state = OrderState.CANCELLD;
         this.updatedAt = LocalDateTime.now();
     }
+
+
+    // // ============== 편의 메서드 ==============
+    // public void addOrderItem(OrderItem orderItem){
+    //     orderItems.add(orderItem);
+    //     orderItem.setOrder(this);
+    // }
+    // public void addOrderItem(OrderItem orderItem){
+    //     orderItems.add(orderItem);
+    //     orderItem.setOrder(this);
+    // }
 }

@@ -3,8 +3,7 @@ package com.inkcloud.order_service.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.inkcloud.order_service.domain.OrderItem;
-import com.inkcloud.order_service.domain.OrderShip;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.inkcloud.order_service.enums.OrderState;
 
 import lombok.AllArgsConstructor;
@@ -18,19 +17,20 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class OrderDto {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String id;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private OrderState state;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDateTime createdAt;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDateTime updatedAt;
     
     private int price;
     private int quantity;
 
-    private String memberEmail;
-    private String memberContact;
-    private String memberName;
+    private MemberDto member;
 
-    private List<OrderItem> orderItems;
-    private OrderShip orderShip;
-
+    private List<OrderItemDto> orderItems;
+    private OrderShipDto orderShip;
 }

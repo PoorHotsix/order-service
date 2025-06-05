@@ -1,6 +1,4 @@
-package com.inkcloud.order_service.condition;
-
-import java.time.LocalDate;
+package com.inkcloud.order_service.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +10,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class OrderDateCreteria {
-    private LocalDate startDate;
-    private LocalDate endDate;
+public class MemberDto {
+    private String memberEmail;
+    private String memberContact;
+    private String memberName;
 }

@@ -1,7 +1,7 @@
 package com.inkcloud.order_service.enums;
 
 public enum OrderState {
-    PREPARE, SHIPPING, SHIPPED, CANCELLD;
+    PENDING, PREPARE, SHIPPING, SHIPPED, CANCELLD;
 
     public OrderState next(){
         OrderState state[] = OrderState.values();

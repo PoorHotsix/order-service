@@ -17,7 +17,7 @@ spring:
   # -------------------------------------------------------------------  
   
   kafka:
-    bootstrap-servers: broker:9092
+    bootstrap-servers: ${SPRING_LOCAL_KAFKA}
     consumer:
       auto-offset-reset: earliest
     producer:

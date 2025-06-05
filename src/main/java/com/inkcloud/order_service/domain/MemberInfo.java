@@ -1,4 +1,4 @@
-package com.inkcloud.order_service.dto;
+package com.inkcloud.order_service.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
