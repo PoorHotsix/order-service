@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class OrderStartEvent {
+public class OrderEvent {
     private String id;
-    private OrderStartEventDto order;
+    private OrderEventDto order;
 }

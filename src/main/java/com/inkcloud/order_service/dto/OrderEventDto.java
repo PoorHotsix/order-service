@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class OrderStartEventDto {
+public class OrderEventDto {
     int price;
     int quantity;
     String email;

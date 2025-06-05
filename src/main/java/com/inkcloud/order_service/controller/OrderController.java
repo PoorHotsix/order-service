@@ -7,14 +7,11 @@ import com.inkcloud.order_service.condition.OrderDateCreteria;
 import com.inkcloud.order_service.condition.OrderSearchCreteria;
 import com.inkcloud.order_service.condition.OrderSortingCreteria;
 import com.inkcloud.order_service.dto.OrderDto;
+import com.inkcloud.order_service.dto.OrderEventDto;
 import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
-import com.inkcloud.order_service.dto.OrderStartEventDto;
 import com.inkcloud.order_service.service.OrderService;
 
-import jakarta.websocket.server.PathParam;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,7 +36,7 @@ public class OrderController {
     private final OrderService service;
     
     @PostMapping
-    public ResponseEntity<OrderStartEventDto> createOrder(@RequestBody OrderDto dto) {
+    public ResponseEntity<OrderEventDto> createOrder(@RequestBody OrderDto dto) {
         return new ResponseEntity<>( service.createOrder(dto),HttpStatus.CREATED);
     }
 

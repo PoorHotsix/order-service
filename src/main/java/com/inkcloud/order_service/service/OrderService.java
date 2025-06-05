@@ -17,14 +17,14 @@ import com.inkcloud.order_service.domain.OrderItem;
 import com.inkcloud.order_service.domain.OrderShip;
 import com.inkcloud.order_service.dto.MemberDto;
 import com.inkcloud.order_service.dto.OrderDto;
+import com.inkcloud.order_service.dto.OrderEventDto;
 import com.inkcloud.order_service.dto.OrderItemDto;
 import com.inkcloud.order_service.dto.OrderShipDto;
 import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
-import com.inkcloud.order_service.dto.OrderStartEventDto;
 import com.inkcloud.order_service.enums.OrderState;
 
 public interface OrderService {
-    abstract OrderStartEventDto createOrder(OrderDto dto);
+    abstract OrderEventDto createOrder(OrderDto dto);
     abstract OrderDto retriveOrder(String orderId);
     abstract Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
