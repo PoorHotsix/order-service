@@ -18,6 +18,6 @@ COPY --from=build application/dependencies/ ./
 COPY --from=build application/spring-boot-loader/ ./
 COPY --from=build application/snapshot-dependencies/ ./
 COPY --from=build application/application/ ./
-COPY .env /application/.env
+# COPY .env /application/.env
 # ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"] 
 ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"] 

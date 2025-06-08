@@ -28,7 +28,8 @@ public class OrderDto {
     
     private int price;
     private int quantity;
-
+    
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private MemberDto member;
 
     private List<OrderItemDto> orderItems;

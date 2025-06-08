@@ -17,6 +17,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,8 +39,8 @@ public class OrderController {
     private final OrderService service;
     
     @PostMapping
-    public ResponseEntity<OrderEventDto> createOrder(@RequestBody OrderDto dto) {
-        return new ResponseEntity<>( service.createOrder(dto),HttpStatus.CREATED);
+    public ResponseEntity<OrderEventDto> createOrder(@RequestBody OrderDto dto, @AuthenticationPrincipal Jwt jwt) {
+        return new ResponseEntity<>( service.createOrder(dto,jwt),HttpStatus.CREATED);
     }
 
     @GetMapping
@@ -51,7 +54,8 @@ public class OrderController {
         return new ResponseEntity<>(pages, HttpStatus.OK);
     }
     
-    @GetMapping("/all")
+    @GetMapping("/all")    
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Page<OrderDto>> getAllOrders(@ModelAttribute OrderSearchCreteria search, @ModelAttribute OrderDateCreteria date, @ModelAttribute OrderSortingCreteria sort, Pageable page) {
         Page<OrderDto> pages = service.allRetriveOrders(search, date, sort, page);
         return new ResponseEntity<>(pages, HttpStatus.OK);
@@ -63,6 +67,7 @@ public class OrderController {
     }
     
     @PutMapping("/{order_id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<OrderSimpleResponseDto> updateOrder(@PathVariable(name = "order_id") String orderId) {
         return new ResponseEntity<>(service.updateOrder(orderId), HttpStatus.ACCEPTED);
     }

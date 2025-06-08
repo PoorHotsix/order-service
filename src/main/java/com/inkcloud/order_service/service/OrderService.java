@@ -1,12 +1,12 @@
 package com.inkcloud.order_service.service;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.inkcloud.order_service.condition.OrderDateCreteria;
 import com.inkcloud.order_service.condition.OrderSearchCreteria;
@@ -24,7 +24,7 @@ import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
 import com.inkcloud.order_service.enums.OrderState;
 
 public interface OrderService {
-    abstract OrderEventDto createOrder(OrderDto dto);
+    abstract OrderEventDto createOrder(OrderDto dto, Jwt jwt);
     abstract OrderDto retriveOrder(String orderId);
     abstract Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);

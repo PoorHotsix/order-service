@@ -1,8 +1,6 @@
 package com.inkcloud.order_service.service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -10,19 +8,24 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inkcloud.order_service.condition.OrderDateCreteria;
 import com.inkcloud.order_service.condition.OrderSearchCreteria;
 import com.inkcloud.order_service.condition.OrderSortingCreteria;
 import com.inkcloud.order_service.domain.Order;
+import com.inkcloud.order_service.dto.MemberDto;
 import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderEvent;
 import com.inkcloud.order_service.dto.OrderEventDto;
 import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
 import com.inkcloud.order_service.enums.OrderErrorCode;
 import com.inkcloud.order_service.enums.OrderSearchCategory;
+import com.inkcloud.order_service.enums.OrderState;
 import com.inkcloud.order_service.exception.OrderException;
 import com.inkcloud.order_service.repository.OrderRepository;
 
@@ -37,12 +40,29 @@ import lombok.extern.slf4j.Slf4j;
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository repo;
     private final KafkaTemplate<String, OrderEvent> kafkaTemplate; // 토픽 이름, event객체
+    private final WebClient webClient;
 
     private String retriveErrMsg = "주문 정보 조회 오류!";
     private String updateErrMsg = "주문 상태 수정 실패!";
 
     @Override
-    public OrderEventDto createOrder(OrderDto dto) {
+    public OrderEventDto createOrder(OrderDto dto, Jwt jwt) {
+        log.info("token : {}",jwt.getTokenValue());
+        JsonNode res = webClient.get()
+                                .uri("/api/v1/members/detail")
+                                .header("Authorization", "Bearer "+jwt.getTokenValue())
+                                .retrieve()
+                                .bodyToMono(JsonNode.class)
+                                .block();
+        log.info("Get User Detail : {}", res);
+        MemberDto mem = MemberDto.builder()
+                                    .memberEmail(res.get("email").asText())
+                                    .memberContact(res.get("phoneNumber").asText())
+                                    .memberName(res.get("firstName").asText()+res.get("lastName").asText())
+                                    .build();
+        dto.setMember(mem);
+        log.info("user info success : {}", res.get("email").asText());
+
         Order order = dtoToEntity(dto);
         setupRelationships(order);
 
@@ -103,39 +123,57 @@ public class OrderServiceImpl implements OrderService {
         });
         log.info("============주문 조회 : {} ", order.getId());
         order.setState(order.getState().next());
-        order.setUpdatedAt(LocalDateTime.now());
         return entityToSimpleDto(order);
     }
 
     @Override
     public OrderSimpleResponseDto cancleOrder(String id) {
-        log.info("============주문 업데이트 : {} ", id);
+        log.info("============주문 취소 : {} ", id);
         Order order = repo.findById(id).orElseThrow(() -> {
             throw new OrderException(OrderErrorCode.FAILED_UPDATE_ORDER);
         });
         log.info("============주문 조회 : {} ", order.getId());
-        order.setUpdatedAt(LocalDateTime.now());
         order.cancleOrder();
         return entityToSimpleDto(order);
     }
 
-    // 상품 들어오면 수정 필요 (토픽 이름)
+    // 결제 완료시점
     @KafkaListener(topics = "payment-success", groupId = "payment_group")
     @Transactional
     public void orderComplete(String event) throws Exception {
         log.info("Kafka Consumer : Order-Service, receive event : {}", event);
+        OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
 
         try {
-            OrderEvent successEvent = new ObjectMapper().readValue(event, OrderEvent.class);
-            Optional<Order> result = repo.findById(successEvent.getOrder().getOrderId());
+            Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
             Order order = result.orElseThrow(() -> {
-                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,"주문번호 : " + successEvent.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,"주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
             });
             order.setState(order.getState().next());
             log.info("주문 완료");
 
         } catch (Exception e) {
-            // kafkaTemplate.send("failed-order", )
+            log.error("주문 실패", e);
+            // 주문 완료 처리 오류시
+            kafkaTemplate.send("order-failed", ev);
+            throw e;
+        }
+    }
+
+    // 주문 실패 처리 마무리
+    @KafkaListener(topics = "order-failed-payment-refund", groupId = "payment_group")
+    @Transactional
+    public void failedPay(String event) throws Exception{
+        log.info("kafka Consuner : Order-service, receive event: {}", event);
+        OrderEvent ev = new ObjectMapper().readValue(event,OrderEvent.class);
+        try {
+            Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
+            Order order = result.orElseThrow(() -> {
+                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,"주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+            });
+            order.setState(OrderState.FAILED);
+        } catch (Exception e) {
+            log.error("주문 실패 처리중 오류 : ", e);
             throw e;
         }
     }
