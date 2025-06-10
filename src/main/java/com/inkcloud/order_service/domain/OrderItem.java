@@ -21,8 +21,10 @@ import lombok.Setter;
 public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "item_id")
-    private long itemId;
+    private long id;
+
+    @Column(name = "item_id", nullable = false)
+    private String itemId;
     
     @Column(nullable = false)
     private String name;
@@ -33,12 +35,12 @@ public class OrderItem {
     private int quantity;
 
     @Column(nullable = false)
-    private String auther;
+    private String author;
 
     @Column(nullable = false)
     private String publisher;
 
-    @Column(name = "thumbnail_url", nullable = false)
+    @Column(name = "thumbnail_url")
     private String thumbnailUrl;
     
     @ManyToOne

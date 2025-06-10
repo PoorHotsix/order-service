@@ -77,10 +77,11 @@ public interface OrderService {
     }
     default OrderItemDto itemEntityToDto(OrderItem item){
         return OrderItemDto.builder()
+                                .itemId(item.getItemId())
                                 .name(item.getName())
                                 .price(item.getPrice())
                                 .quantity(item.getQuantity())
-                                .auther(item.getAuther())
+                                .author(item.getAuthor())
                                 .publisher(item.getPublisher())
                                 .thumbnailUrl(item.getThumbnailUrl())
                                 .build();
@@ -90,7 +91,8 @@ public interface OrderService {
                             .name(dto.getName())
                             .price(dto.getPrice())
                             .quantity(dto.getQuantity())
-                            .auther(dto.getAuther())
+                            .itemId(dto.getItemId())
+                            .author(dto.getAuthor())
                             .publisher(dto.getPublisher())
                             .thumbnailUrl(dto.getThumbnailUrl())
                             .build();

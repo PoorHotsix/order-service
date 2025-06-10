@@ -60,6 +60,13 @@ public class OrderServiceImpl implements OrderService {
                                     .memberContact(res.get("phoneNumber").asText())
                                     .memberName(res.get("firstName").asText()+res.get("lastName").asText())
                                     .build();
+        
+        if(!dto.getMember().equals(mem)){
+            log.info("dto : {}", dto.getMember());
+            log.info("memser : {}", mem);
+            throw new OrderException(OrderErrorCode.INVALID_MEMBER);
+        }
+        
         dto.setMember(mem);
         log.info("user info success : {}", res.get("email").asText());
 
@@ -82,6 +89,9 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         event.setOrder(resDto);
         event.setId(order.getId());
+        dto.getOrderItems().forEach(item->{
+            log.info("item : {}", item);
+        });
 
         kafkaTemplate.send("order-verify", event);
         repo.save(order);
