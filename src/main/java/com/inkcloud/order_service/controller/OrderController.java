@@ -44,8 +44,8 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<OrderDto> getOrderDetail(@RequestParam(value = "order_id") String orderId) {
-        return new ResponseEntity<>(service.retriveOrder(orderId), HttpStatus.OK);
+    public ResponseEntity<OrderDto> getOrderDetail(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt) {
+        return new ResponseEntity<>(service.retriveOrder(orderId, jwt), HttpStatus.OK);
     }
 
     @GetMapping("/member")

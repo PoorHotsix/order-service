@@ -25,6 +25,8 @@ public class OrderDto {
     private LocalDateTime createdAt;
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDateTime updatedAt;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private PaymentDto paymentDto;
     
     private int price;
     private int quantity;

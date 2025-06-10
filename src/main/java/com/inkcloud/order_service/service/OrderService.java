@@ -25,7 +25,7 @@ import com.inkcloud.order_service.enums.OrderState;
 
 public interface OrderService {
     abstract OrderEventDto createOrder(OrderDto dto, Jwt jwt);
-    abstract OrderDto retriveOrder(String orderId);
+    abstract OrderDto retriveOrder(String orderId, Jwt jwt);
     abstract Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract OrderSimpleResponseDto cancleOrder(String id, Jwt jwt);

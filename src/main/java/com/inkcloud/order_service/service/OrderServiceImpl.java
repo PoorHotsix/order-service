@@ -25,6 +25,7 @@ import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderEvent;
 import com.inkcloud.order_service.dto.OrderEventDto;
 import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.PaymentDto;
 import com.inkcloud.order_service.enums.OrderErrorCode;
 import com.inkcloud.order_service.enums.OrderSearchCategory;
 import com.inkcloud.order_service.enums.OrderState;
@@ -102,11 +103,19 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderDto retriveOrder(String orderId) {
+    public OrderDto retriveOrder(String orderId, Jwt jwt) {
         Order order = repo.findById(orderId).orElseThrow(() -> {
             throw new IllegalArgumentException(retriveErrMsg);
         });
-        return entityToDto(order);
+        PaymentDto dto = webClient.get()
+                                    .uri("/api/v1/payments?order_id="+order.getId())
+                                    .header("Authorization", "Bearer " + jwt.getTokenValue())
+                                    .retrieve()
+                                    .bodyToMono(PaymentDto.class)
+                                    .block();
+        OrderDto od = entityToDto(order);
+        od.setPaymentDto(dto);
+        return od;
     }
 
     @Override
