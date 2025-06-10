@@ -28,8 +28,8 @@ public interface OrderService {
     abstract OrderDto retriveOrder(String orderId);
     abstract Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
-    abstract OrderSimpleResponseDto cancleOrder(String id);
-    abstract OrderSimpleResponseDto updateOrder(String id);
+    abstract OrderSimpleResponseDto cancleOrder(String id, Jwt jwt);
+    abstract OrderSimpleResponseDto updateOrder(String id, Jwt jwt);
 
     default OrderDto entityToDto(Order order){
         return OrderDto.builder()

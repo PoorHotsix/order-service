@@ -1,6 +1,8 @@
 package com.inkcloud.order_service.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -47,26 +49,26 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderEventDto createOrder(OrderDto dto, Jwt jwt) {
-        log.info("token : {}",jwt.getTokenValue());
+        log.info("token : {}", jwt.getTokenValue());
         JsonNode res = webClient.get()
-                                .uri("/api/v1/members/detail")
-                                .header("Authorization", "Bearer "+jwt.getTokenValue())
-                                .retrieve()
-                                .bodyToMono(JsonNode.class)
-                                .block();
+                .uri("/api/v1/members/detail")
+                .header("Authorization", "Bearer " + jwt.getTokenValue())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .block();
         log.info("Get User Detail : {}", res);
         MemberDto mem = MemberDto.builder()
-                                    .memberEmail(res.get("email").asText())
-                                    .memberContact(res.get("phoneNumber").asText())
-                                    .memberName(res.get("firstName").asText()+res.get("lastName").asText())
-                                    .build();
-        
-        if(!dto.getMember().equals(mem)){
+                .memberEmail(res.get("email").asText())
+                .memberContact(res.get("phoneNumber").asText())
+                .memberName(res.get("firstName").asText() + res.get("lastName").asText())
+                .build();
+
+        if (!dto.getMember().equals(mem)) {
             log.info("dto : {}", dto.getMember());
             log.info("memser : {}", mem);
             throw new OrderException(OrderErrorCode.INVALID_MEMBER);
         }
-        
+
         dto.setMember(mem);
         log.info("user info success : {}", res.get("email").asText());
 
@@ -89,7 +91,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         event.setOrder(resDto);
         event.setId(order.getId());
-        dto.getOrderItems().forEach(item->{
+        dto.getOrderItems().forEach(item -> {
             log.info("item : {}", item);
         });
 
@@ -126,7 +128,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderSimpleResponseDto updateOrder(String id) {
+    public OrderSimpleResponseDto updateOrder(String id, Jwt jwt) {
         log.info("============주문 업데이트 : {} ", id);
         Order order = repo.findById(id).orElseThrow(() -> {
             throw new OrderException(OrderErrorCode.FAILED_UPDATE_ORDER);
@@ -137,13 +139,28 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderSimpleResponseDto cancleOrder(String id) {
+    public OrderSimpleResponseDto cancleOrder(String id, Jwt jwt) {
         log.info("============주문 취소 : {} ", id);
         Order order = repo.findById(id).orElseThrow(() -> {
             throw new OrderException(OrderErrorCode.FAILED_UPDATE_ORDER);
         });
         log.info("============주문 조회 : {} ", order.getId());
-        order.cancleOrder();
+
+        Map<String, String> req = new HashMap<>();
+        req.put("order_id", id);
+        String result = webClient.put()
+                .uri("/api/v1/payments")
+                .bodyValue(req)
+                .header("Authorization", "Bearer " + jwt.getTokenValue())
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+        log.info("=========== 전체 JSON 응답 성공하긴 하냐");
+        log.info("=========== 전체 JSON 응답 : {}", result);
+        if (result.contains("CANCELLED")) {
+            log.info("=========== 결제 취소 완료 : {}", result);
+            order.cancleOrder();
+        }
         return entityToSimpleDto(order);
     }
 
@@ -157,7 +174,8 @@ public class OrderServiceImpl implements OrderService {
         try {
             Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
             Order order = result.orElseThrow(() -> {
-                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,"주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
+                        "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
             });
             order.setState(order.getState().next());
             log.info("주문 완료");
@@ -173,13 +191,14 @@ public class OrderServiceImpl implements OrderService {
     // 주문 실패 처리 마무리
     @KafkaListener(topics = "order-failed-payment-refund", groupId = "payment_group")
     @Transactional
-    public void failedPay(String event) throws Exception{
+    public void failedPay(String event) throws Exception {
         log.info("kafka Consuner : Order-service, receive event: {}", event);
-        OrderEvent ev = new ObjectMapper().readValue(event,OrderEvent.class);
+        OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
         try {
             Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
             Order order = result.orElseThrow(() -> {
-                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,"주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
+                        "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
             });
             order.setState(OrderState.FAILED);
         } catch (Exception e) {
