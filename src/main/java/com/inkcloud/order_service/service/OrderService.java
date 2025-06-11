@@ -15,18 +15,21 @@ import com.inkcloud.order_service.domain.MemberInfo;
 import com.inkcloud.order_service.domain.Order;
 import com.inkcloud.order_service.domain.OrderItem;
 import com.inkcloud.order_service.domain.OrderShip;
-import com.inkcloud.order_service.dto.MemberDto;
 import com.inkcloud.order_service.dto.OrderDto;
-import com.inkcloud.order_service.dto.OrderEventDto;
-import com.inkcloud.order_service.dto.OrderItemDto;
-import com.inkcloud.order_service.dto.OrderShipDto;
-import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.OrderMemberDto;
+import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.child.MemberDto;
+import com.inkcloud.order_service.dto.child.OrderItemDto;
+import com.inkcloud.order_service.dto.child.OrderShipDto;
+import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.event.OrderEventDto;
 import com.inkcloud.order_service.enums.OrderState;
 
 public interface OrderService {
     abstract OrderEventDto createOrder(OrderDto dto, Jwt jwt);
     abstract OrderDto retriveOrder(String orderId, Jwt jwt);
-    abstract Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
+    abstract Page<OrderMemberDto> retriveOrdersByMember(Jwt jwt,String state, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
+    abstract Page<OrderReviewDto> retriveOrdersByMemberInShipped(Jwt jwt, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract OrderSimpleResponseDto cancleOrder(String id, Jwt jwt);
     abstract OrderSimpleResponseDto updateOrder(String id, Jwt jwt);
@@ -67,6 +70,25 @@ public interface OrderService {
                             .updatedAt(LocalDateTime.now())
                             .build();
     }
+
+    default OrderMemberDto entityToMemberDto(Order order){
+        return OrderMemberDto.builder().id(order.getId())
+                                        .state(order.getState())
+                                        .createdAt(order.getCreatedAt())
+                                        .price(order.getPrice())
+                                        .quantity(order.getQuantity())
+                                        .orderName(order.getMember().getMemberName())
+                                        .receiver(order.getOrderShip().getReceiver())
+                                        .delegateProduct(order.getOrderItems().get(0).getName())
+                                        .typesNum(order.getOrderItems().size())
+                                        .build();
+    }
+
+    default OrderReviewDto entityToReviewDto(Order order){
+        return OrderReviewDto.builder().orderItems(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList())).build();
+    }
+
+
     default OrderSimpleResponseDto entityToSimpleDto(Order order){
         return OrderSimpleResponseDto.builder()
                                             .id(order.getId())

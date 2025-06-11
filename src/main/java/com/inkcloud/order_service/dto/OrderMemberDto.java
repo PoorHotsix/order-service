@@ -1,9 +1,7 @@
 package com.inkcloud.order_service.dto;
 
 import java.time.LocalDateTime;
-
 import com.inkcloud.order_service.enums.OrderState;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,11 +10,18 @@ import lombok.Setter;
 
 @Builder
 @Getter @Setter
-@AllArgsConstructor
 @NoArgsConstructor
-public class OrderSimpleResponseDto {
+@AllArgsConstructor
+public class OrderMemberDto {
     private String id;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
     private OrderState state;
+    private LocalDateTime createdAt;
+    private int price;
+    private int quantity;
+    private String orderName;
+    private String receiver;
+    private String delegateProduct; // 대표 상품
+    private int typesNum; // 종류
+
+
 }

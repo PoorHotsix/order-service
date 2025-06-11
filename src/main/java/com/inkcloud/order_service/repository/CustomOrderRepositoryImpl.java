@@ -86,22 +86,22 @@ public class CustomOrderRepositoryImpl implements CustomOrderRepository {
         if (date == null || date.getStartDate() == null || date.getEndDate() == null)
             return null;
 
-        return qOrder.createdAt.between(date.getStartDate().atStartOfDay(), date.getEndDate().atStartOfDay());
+        return qOrder.createdAt.between(date.getStartDate().atStartOfDay(), date.getEndDate().plusDays(1).atStartOfDay());
     }
 
     private BooleanExpression searchStateEQ(List<OrderState> states) {
         if (states == null || states.isEmpty())
             return null;
+        
+        List<OrderState> filteredStates = states.stream().filter(state-> state!=OrderState.PENDING).collect(Collectors.toList());
 
-        return qOrder.state.in(states);
+        return qOrder.state.in(filteredStates);
     }
 
     private OrderSpecifier<?> getOrderSpecifier(OrderSortingCreteria sort) {
         if (sort == null || sort.getSortBy() == null || sort.getSortDir() == null) {
             return qOrder.createdAt.desc();
         }
-
-
         ComparableExpressionBase<?> field = getFieldExpression(sort.getSortBy());
 
         return sort.getSortDir() == SortDirection.DESC ? field.desc() : field.asc();

@@ -1,7 +1,7 @@
 package com.inkcloud.order_service.service;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,12 +20,14 @@ import com.inkcloud.order_service.condition.OrderDateCreteria;
 import com.inkcloud.order_service.condition.OrderSearchCreteria;
 import com.inkcloud.order_service.condition.OrderSortingCreteria;
 import com.inkcloud.order_service.domain.Order;
-import com.inkcloud.order_service.dto.MemberDto;
 import com.inkcloud.order_service.dto.OrderDto;
-import com.inkcloud.order_service.dto.OrderEvent;
-import com.inkcloud.order_service.dto.OrderEventDto;
-import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
-import com.inkcloud.order_service.dto.PaymentDto;
+import com.inkcloud.order_service.dto.OrderMemberDto;
+import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.child.MemberDto;
+import com.inkcloud.order_service.dto.child.PaymentDto;
+import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.event.OrderEvent;
+import com.inkcloud.order_service.dto.event.OrderEventDto;
 import com.inkcloud.order_service.enums.OrderErrorCode;
 import com.inkcloud.order_service.enums.OrderSearchCategory;
 import com.inkcloud.order_service.enums.OrderState;
@@ -61,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
         MemberDto mem = MemberDto.builder()
                 .memberEmail(res.get("email").asText())
                 .memberContact(res.get("phoneNumber").asText())
-                .memberName(res.get("firstName").asText() + res.get("lastName").asText())
+                .memberName(res.get("lastName").asText() +res.get("firstName").asText())
                 .build();
 
         if (!dto.getMember().equals(mem)) {
@@ -119,14 +121,32 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Page<OrderDto> retriveOrdersByMember(String memberId, OrderDateCreteria date, OrderSortingCreteria sort,
+    public Page<OrderMemberDto> retriveOrdersByMember(Jwt jwt,String state, OrderDateCreteria date, OrderSortingCreteria sort,
+            Pageable page) {
+        OrderState oState = null;
+        if(!"ALL".equals(state))
+            oState = OrderState.valueOf(state);
+        List<OrderState> states = oState != null ? List.of(oState) : List.of();
+        
+        Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
+                .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
+                .keyword(jwt.getClaimAsString("email"))
+                .states(states)
+                .build(), date, sort, page);
+        return orders.map(this::entityToMemberDto);
+    }
+
+    @Override
+    public Page<OrderReviewDto> retriveOrdersByMemberInShipped(Jwt jwt, OrderDateCreteria date, OrderSortingCreteria sort,
             Pageable page) {
         Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
                 .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
-                .keyword(memberId)
+                .keyword(jwt.getClaimAsString("email"))
+                .states(List.of(OrderState.SHIPPED))
                 .build(), date, sort, page);
-        return orders.map(this::entityToDto);
+        return orders.map(this::entityToReviewDto);
     }
+
 
     @Override
     public Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date,

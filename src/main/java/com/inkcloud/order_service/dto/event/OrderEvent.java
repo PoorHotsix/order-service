@@ -1,4 +1,4 @@
-package com.inkcloud.order_service.dto;
+package com.inkcloud.order_service.dto.event;
 
 import lombok.Getter;
 import lombok.Setter;

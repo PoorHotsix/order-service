@@ -7,8 +7,10 @@ import com.inkcloud.order_service.condition.OrderDateCreteria;
 import com.inkcloud.order_service.condition.OrderSearchCreteria;
 import com.inkcloud.order_service.condition.OrderSortingCreteria;
 import com.inkcloud.order_service.dto.OrderDto;
-import com.inkcloud.order_service.dto.OrderEventDto;
-import com.inkcloud.order_service.dto.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.OrderMemberDto;
+import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
+import com.inkcloud.order_service.dto.event.OrderEventDto;
 import com.inkcloud.order_service.service.OrderService;
 
 import lombok.RequiredArgsConstructor;
@@ -49,8 +51,13 @@ public class OrderController {
     }
 
     @GetMapping("/member")
-    public ResponseEntity<Page<OrderDto>> getMemberOrders(@RequestParam(value = "member_id") String memberId, @ModelAttribute OrderDateCreteria date, @ModelAttribute OrderSortingCreteria sort, Pageable page) {
-        Page<OrderDto> pages = service.retriveOrdersByMember(memberId, date, sort, page);
+    public ResponseEntity<Page<OrderMemberDto>> getMemberOrders(@AuthenticationPrincipal Jwt jwt, @RequestParam String state, @ModelAttribute OrderDateCreteria date, @ModelAttribute OrderSortingCreteria sort, Pageable page) {
+        Page<OrderMemberDto> pages = service.retriveOrdersByMember(jwt, state, date, sort, page);
+        return new ResponseEntity<>(pages, HttpStatus.OK);
+    }
+    @GetMapping("/member/ship")
+    public ResponseEntity<Page<OrderReviewDto>> getMemberOrdersInShipped(@AuthenticationPrincipal Jwt jwt, @ModelAttribute OrderDateCreteria date, @ModelAttribute OrderSortingCreteria sort, Pageable page) {
+        Page<OrderReviewDto> pages = service.retriveOrdersByMemberInShipped(jwt, date, sort, page);
         return new ResponseEntity<>(pages, HttpStatus.OK);
     }
     
