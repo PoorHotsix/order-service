@@ -32,6 +32,7 @@ import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
 import com.inkcloud.order_service.dto.event.OrderEvent;
 import com.inkcloud.order_service.dto.event.OrderEventDto;
 import com.inkcloud.order_service.dto.event.bestseller.ToBestSellerEvent;
+import com.inkcloud.order_service.dto.event.product.FromProductEvent;
 import com.inkcloud.order_service.dto.event.product.ToProductEvent;
 import com.inkcloud.order_service.dto.event.product.ToProductEventDto;
 import com.inkcloud.order_service.dto.event.stat.ToStatEvent;
@@ -236,17 +237,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    @KafkaListener(topics = "stock-confirm", groupId = "payment_group")
+    @KafkaListener(topics = "stock-confirm", groupId = "product_group")
     @Transactional
     public void orderComplete(String event) throws Exception {
         log.info("Kafka Consumer : Order-Service, receive event : {}", event);
-        OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
+        FromProductEvent ev = new ObjectMapper().readValue(event, FromProductEvent.class);
 
         try {
-            Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
+            Optional<Order> result = repo.findById(ev.getOrderId());
             Order order = result.orElseThrow(() -> {
                 throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
-                        "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+                        "주문번호 : " + ev.getOrderId() + "에 해당하는 주문이 없음");
             });
             order.setState(order.getState().next());
             log.info("주문 완료");
