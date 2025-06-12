@@ -1,9 +1,11 @@
 package com.inkcloud.order_service.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.data.domain.Page;
@@ -24,10 +26,15 @@ import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderMemberDto;
 import com.inkcloud.order_service.dto.OrderReviewDto;
 import com.inkcloud.order_service.dto.child.MemberDto;
+import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.PaymentDto;
 import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
 import com.inkcloud.order_service.dto.event.OrderEvent;
 import com.inkcloud.order_service.dto.event.OrderEventDto;
+import com.inkcloud.order_service.dto.event.bestseller.ToBestSellerEvent;
+import com.inkcloud.order_service.dto.event.product.ToProductEvent;
+import com.inkcloud.order_service.dto.event.product.ToProductEventDto;
+import com.inkcloud.order_service.dto.event.stat.ToStatEvent;
 import com.inkcloud.order_service.enums.OrderErrorCode;
 import com.inkcloud.order_service.enums.OrderSearchCategory;
 import com.inkcloud.order_service.enums.OrderState;
@@ -44,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository repo;
-    private final KafkaTemplate<String, OrderEvent> kafkaTemplate; // 토픽 이름, event객체
+    private final KafkaTemplate<String, Object> kafkaTemplate; // 토픽 이름, event객체
     private final WebClient webClient;
 
     private String retriveErrMsg = "주문 정보 조회 오류!";
@@ -126,7 +133,7 @@ public class OrderServiceImpl implements OrderService {
         OrderState oState = null;
         if(!"ALL".equals(state))
             oState = OrderState.valueOf(state);
-        List<OrderState> states = oState != null ? List.of(oState) : List.of(OrderState.PREPARE, OrderState.SHIPPING, OrderState.SHIPPED, OrderState.CANCELED, OrderState.FAILED);
+        List<OrderState> states = oState != null ? List.of(oState) : List.of(OrderState.PREPARE, OrderState.SHIPPING, OrderState.SHIPPED, OrderState.CANCELED);
         
         Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
                 .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
@@ -196,6 +203,41 @@ public class OrderServiceImpl implements OrderService {
     // 결제 완료시점
     @KafkaListener(topics = "payment-success", groupId = "payment_group")
     @Transactional
+    public void paymentComplete(String event) throws Exception {
+        log.info("Kafka Consumer : Order-Service, receive event : {}", event);
+        OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
+
+        try {
+            Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
+            Order order = result.orElseThrow(() -> {
+                throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
+                        "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+            });
+            
+            log.info("결제 성공, 상품 증감 이벤트 발행");
+            List<OrderItemDto> items = order.getOrderItems().stream()
+                                                                .map(this::itemEntityToDto)
+                                                                .collect(Collectors.toList());
+            List<ToProductEventDto> dtos = new ArrayList<>();
+            items.forEach(item->{
+                dtos.add(new ToProductEventDto(item.getItemId(), item.getQuantity()));
+            }); 
+            if(dtos.isEmpty())
+                throw new OrderException(OrderErrorCode.INVALID_ITEM);
+            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).build());
+            
+
+        } catch (Exception e) {
+            log.error("주문 실패", e);
+            // 주문 완료 처리 오류시
+            kafkaTemplate.send("order-failed", ev);
+            throw e;
+        }
+    }
+
+
+    @KafkaListener(topics = "stock-confirm", groupId = "payment_group")
+    @Transactional
     public void orderComplete(String event) throws Exception {
         log.info("Kafka Consumer : Order-Service, receive event : {}", event);
         OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
@@ -209,6 +251,10 @@ public class OrderServiceImpl implements OrderService {
             order.setState(order.getState().next());
             log.info("주문 완료");
 
+            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(),order.getPrice(),order.getCreatedAt());
+            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
+            kafkaTemplate.send("order-complete-bestseller", bestSellerEvent);
+            kafkaTemplate.send("order-complete-stat", statEvent);
         } catch (Exception e) {
             log.error("주문 실패", e);
             // 주문 완료 처리 오류시
@@ -217,17 +263,18 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+
     // 주문 실패 처리 마무리
     @KafkaListener(topics = "order-failed-payment-refund", groupId = "payment_group")
     @Transactional
     public void failedPay(String event) throws Exception {
         log.info("kafka Consuner : Order-service, receive event: {}", event);
-        OrderEvent ev = new ObjectMapper().readValue(event, OrderEvent.class);
+        String ev = new ObjectMapper().readValue(event, String.class);
         try {
-            Optional<Order> result = repo.findById(ev.getOrder().getOrderId());
+            Optional<Order> result = repo.findById(ev);
             Order order = result.orElseThrow(() -> {
                 throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
-                        "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
+                        "주문번호 : " + ev + "에 해당하는 주문이 없음");
             });
             order.setState(OrderState.FAILED);
         } catch (Exception e) {
