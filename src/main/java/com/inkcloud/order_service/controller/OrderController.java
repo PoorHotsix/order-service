@@ -68,14 +68,14 @@ public class OrderController {
         return new ResponseEntity<>(pages, HttpStatus.OK);
     }
 
-    @PatchMapping("/{order_id}")
-    public ResponseEntity<OrderSimpleResponseDto> cancelOrder(@PathVariable(name = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt){
+    @PutMapping
+    public ResponseEntity<OrderSimpleResponseDto> cancelOrder(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt){
         return new ResponseEntity<>(service.cancleOrder(orderId, jwt), HttpStatus.ACCEPTED);
     }
     
-    @PutMapping("/{order_id}")
+    @PatchMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<OrderSimpleResponseDto> updateOrder(@PathVariable(name = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<OrderSimpleResponseDto> updateOrder(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt) {
         return new ResponseEntity<>(service.updateOrder(orderId, jwt), HttpStatus.ACCEPTED);
     }
     

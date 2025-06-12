@@ -68,7 +68,7 @@ public class Order {
     }
 
     public void cancleOrder(){
-        this.state = OrderState.CANCELLD;
+        this.state = OrderState.CANCELED;
         this.updatedAt = LocalDateTime.now();
     }
 

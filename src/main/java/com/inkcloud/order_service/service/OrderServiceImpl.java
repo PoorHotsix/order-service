@@ -126,7 +126,7 @@ public class OrderServiceImpl implements OrderService {
         OrderState oState = null;
         if(!"ALL".equals(state))
             oState = OrderState.valueOf(state);
-        List<OrderState> states = oState != null ? List.of(oState) : List.of();
+        List<OrderState> states = oState != null ? List.of(oState) : List.of(OrderState.PREPARE, OrderState.SHIPPING, OrderState.SHIPPED, OrderState.CANCELED, OrderState.FAILED);
         
         Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
                 .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
