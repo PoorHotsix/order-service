@@ -242,7 +242,7 @@ public class OrderServiceImpl implements OrderService {
             }); 
             if(dtos.isEmpty())
                 throw new OrderException(OrderErrorCode.INVALID_ITEM);
-            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).build());
+            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(-1).build());
             
 
         } catch (Exception e) {

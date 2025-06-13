@@ -15,4 +15,5 @@ import lombok.Setter;
 public class ToProductEvent {
     String orderId;
     List<ToProductEventDto> dtos;
+    Integer check;
 }
