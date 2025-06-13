@@ -205,7 +205,7 @@ public class OrderServiceImpl implements OrderService {
             }); 
             if(dtos.isEmpty())
                 throw new OrderException(OrderErrorCode.INVALID_ITEM);
-            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).build());
+            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(-1).build());
             ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(),order.getPrice(),order.getCreatedAt());
             ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
             kafkaTemplate.send("order-canceled-bs", bestSellerEvent);
@@ -242,7 +242,7 @@ public class OrderServiceImpl implements OrderService {
             }); 
             if(dtos.isEmpty())
                 throw new OrderException(OrderErrorCode.INVALID_ITEM);
-            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(-1).build());
+            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(1).build());
             
 
         } catch (Exception e) {
