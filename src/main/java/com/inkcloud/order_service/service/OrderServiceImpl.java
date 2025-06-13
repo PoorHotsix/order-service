@@ -192,12 +192,29 @@ public class OrderServiceImpl implements OrderService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
-        log.info("=========== 전체 JSON 응답 성공하긴 하냐");
         log.info("=========== 전체 JSON 응답 : {}", result);
         if (result.contains("CANCELLED")) {
             log.info("=========== 결제 취소 완료 : {}", result);
+
+            List<OrderItemDto> items = order.getOrderItems().stream()
+                                                                .map(this::itemEntityToDto)
+                                                                .collect(Collectors.toList());
+            List<ToProductEventDto> dtos = new ArrayList<>();
+            items.forEach(item->{
+                dtos.add(new ToProductEventDto(item.getItemId(), -1*item.getQuantity()));
+            }); 
+            if(dtos.isEmpty())
+                throw new OrderException(OrderErrorCode.INVALID_ITEM);
+            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).build());
+            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(),order.getPrice(),order.getCreatedAt());
+            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
+            kafkaTemplate.send("order-canceled-bs", bestSellerEvent);
+            kafkaTemplate.send("order-canceled-st", statEvent);
             order.cancleOrder();
         }
+        else
+            log.error("포트원 결제 취소 실패 - payment-service 로그 확인");
+        
         return entityToSimpleDto(order);
     }
 
