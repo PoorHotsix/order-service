@@ -7,6 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import com.inkcloud.order_service.enums.OrderState;
+import com.inkcloud.order_service.enums.PaymentMethod;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -47,6 +48,8 @@ public class Order {
 
     private int price;
     private int quantity;
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
     @ColumnDefault("0")  // 또는
     private int shippingFee;
 

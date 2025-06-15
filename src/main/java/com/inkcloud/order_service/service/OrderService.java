@@ -1,6 +1,7 @@
 package com.inkcloud.order_service.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,6 +19,7 @@ import com.inkcloud.order_service.domain.OrderShip;
 import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderMemberDto;
 import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.UpdateOrdersRequestDto;
 import com.inkcloud.order_service.dto.child.MemberDto;
 import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.OrderShipDto;
@@ -31,8 +33,11 @@ public interface OrderService {
     abstract Page<OrderMemberDto> retriveOrdersByMember(Jwt jwt,String state, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderReviewDto> retriveOrdersByMemberInShipped(Jwt jwt, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
     abstract Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date, OrderSortingCreteria sort, Pageable page);
-    abstract OrderSimpleResponseDto cancleOrder(String id, Jwt jwt);
-    abstract OrderSimpleResponseDto updateOrder(String id, Jwt jwt);
+    abstract OrderDto cancleOrder(String id, Jwt jwt);
+    abstract OrderDto updateOrder(String id, OrderState state, Jwt jwt);
+    // abstract List<OrderSimpleResponseDto> cancleOrder(List<String> id, Jwt jwt);
+    // abstract List<OrderSimpleResponseDto> updateOrder(List<String> id, Jwt jwt);
+    abstract List<OrderDto> updateOrder(UpdateOrdersRequestDto dto, Jwt jwt);
 
     default OrderDto entityToDto(Order order){
         return OrderDto.builder()
@@ -42,6 +47,7 @@ public interface OrderService {
                             .updatedAt(order.getUpdatedAt())
                             .price(order.getPrice())
                             .quantity(order.getQuantity())
+                            .method(order.getPaymentMethod())
                             .orderItems(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()))
                             .orderShip(shipEntityToDto(order.getOrderShip()))
                             .member(MemberDto.builder()

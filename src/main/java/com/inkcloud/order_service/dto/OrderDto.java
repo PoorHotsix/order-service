@@ -9,6 +9,7 @@ import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.OrderShipDto;
 import com.inkcloud.order_service.dto.child.PaymentDto;
 import com.inkcloud.order_service.enums.OrderState;
+import com.inkcloud.order_service.enums.PaymentMethod;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +35,7 @@ public class OrderDto {
     
     private int price; // ㅇ
     private int quantity; // ㅇ 
+    private PaymentMethod method;
     
     private MemberDto member; // ㅇ 
 

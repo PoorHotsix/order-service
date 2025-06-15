@@ -25,6 +25,7 @@ import com.inkcloud.order_service.domain.Order;
 import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderMemberDto;
 import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.UpdateOrdersRequestDto;
 import com.inkcloud.order_service.dto.child.MemberDto;
 import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.PaymentDto;
@@ -71,7 +72,7 @@ public class OrderServiceImpl implements OrderService {
         MemberDto mem = MemberDto.builder()
                 .memberEmail(res.get("email").asText())
                 .memberContact(res.get("phoneNumber").asText())
-                .memberName(res.get("lastName").asText() +res.get("firstName").asText())
+                .memberName(res.get("lastName").asText() + res.get("firstName").asText())
                 .build();
 
         if (!dto.getMember().equals(mem)) {
@@ -118,24 +119,26 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException(retriveErrMsg);
         });
         PaymentDto dto = webClient.get()
-                                    .uri("/api/v1/payments?order_id="+order.getId())
-                                    .header("Authorization", "Bearer " + jwt.getTokenValue())
-                                    .retrieve()
-                                    .bodyToMono(PaymentDto.class)
-                                    .block();
+                .uri("/api/v1/payments?order_id=" + order.getId())
+                .header("Authorization", "Bearer " + jwt.getTokenValue())
+                .retrieve()
+                .bodyToMono(PaymentDto.class)
+                .block();
         OrderDto od = entityToDto(order);
         od.setPaymentDto(dto);
         return od;
     }
 
     @Override
-    public Page<OrderMemberDto> retriveOrdersByMember(Jwt jwt,String state, OrderDateCreteria date, OrderSortingCreteria sort,
+    public Page<OrderMemberDto> retriveOrdersByMember(Jwt jwt, String state, OrderDateCreteria date,
+            OrderSortingCreteria sort,
             Pageable page) {
         OrderState oState = null;
-        if(!"ALL".equals(state))
+        if (!"ALL".equals(state))
             oState = OrderState.valueOf(state);
-        List<OrderState> states = oState != null ? List.of(oState) : List.of(OrderState.PREPARE, OrderState.SHIPPING, OrderState.SHIPPED, OrderState.CANCELED);
-        
+        List<OrderState> states = oState != null ? List.of(oState)
+                : List.of(OrderState.PREPARE, OrderState.SHIPPING, OrderState.SHIPPED, OrderState.CANCELED);
+
         Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
                 .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
                 .keyword(jwt.getClaimAsString("email"))
@@ -145,7 +148,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Page<OrderReviewDto> retriveOrdersByMemberInShipped(Jwt jwt, OrderDateCreteria date, OrderSortingCreteria sort,
+    public Page<OrderReviewDto> retriveOrdersByMemberInShipped(Jwt jwt, OrderDateCreteria date,
+            OrderSortingCreteria sort,
             Pageable page) {
         Page<Order> orders = repo.searchOrders(OrderSearchCreteria.builder()
                 .keywordCategory(OrderSearchCategory.MEMBER_EMAIL)
@@ -154,7 +158,6 @@ public class OrderServiceImpl implements OrderService {
                 .build(), date, sort, page);
         return orders.map(this::entityToReviewDto);
     }
-
 
     @Override
     public Page<OrderDto> allRetriveOrders(OrderSearchCreteria searchCondition, OrderDateCreteria date,
@@ -165,18 +168,46 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderSimpleResponseDto updateOrder(String id, Jwt jwt) {
+    public OrderDto updateOrder(String id, OrderState state, Jwt jwt) {
         log.info("============주문 업데이트 : {} ", id);
         Order order = repo.findById(id).orElseThrow(() -> {
             throw new OrderException(OrderErrorCode.FAILED_UPDATE_ORDER);
         });
         log.info("============주문 조회 : {} ", order.getId());
-        order.setState(order.getState().next());
-        return entityToSimpleDto(order);
+        order.setState(state);
+        PaymentDto dto = webClient.get()
+                .uri("/api/v1/payments?order_id=" + order.getId())
+                .header("Authorization", "Bearer " + jwt.getTokenValue())
+                .retrieve()
+                .bodyToMono(PaymentDto.class)
+                .block();
+        OrderDto responseDto = entityToDto(order);
+        responseDto.setPaymentDto(dto);
+
+        return responseDto;
+    }
+
+    // @Override
+    // public List<OrderSimpleResponseDto> updateOrder(List<String> id, Jwt jwt) {
+    // log.info("============주문 목록 업데이트 : {} ", id);
+    // List<Order> orders = repo.findAllById(id);
+    // orders.forEach(o -> o.setState(o.getState().next()));
+
+    // return
+    // orders.stream().map(this::entityToSimpleDto).collect(Collectors.toList());
+    // }
+
+    @Override
+    public List<OrderDto> updateOrder(UpdateOrdersRequestDto dto, Jwt jwt) {
+        log.info("============주문 목록 업데이트");
+        List<Order> orders = repo.findAllById(dto.getOrderIds());
+        orders.forEach(o -> o.setState(dto.getState()));
+
+        return orders.stream().map(this::entityToDto).collect(Collectors.toList());
     }
 
     @Override
-    public OrderSimpleResponseDto cancleOrder(String id, Jwt jwt) {
+    public OrderDto cancleOrder(String id, Jwt jwt) {
         log.info("============주문 취소 : {} ", id);
         Order order = repo.findById(id).orElseThrow(() -> {
             throw new OrderException(OrderErrorCode.FAILED_UPDATE_ORDER);
@@ -197,25 +228,27 @@ public class OrderServiceImpl implements OrderService {
             log.info("=========== 결제 취소 완료 : {}", result);
 
             List<OrderItemDto> items = order.getOrderItems().stream()
-                                                                .map(this::itemEntityToDto)
-                                                                .collect(Collectors.toList());
+                    .map(this::itemEntityToDto)
+                    .collect(Collectors.toList());
             List<ToProductEventDto> dtos = new ArrayList<>();
-            items.forEach(item->{
-                dtos.add(new ToProductEventDto(item.getItemId(), -1*item.getQuantity()));
-            }); 
-            if(dtos.isEmpty())
+            items.forEach(item -> {
+                dtos.add(new ToProductEventDto(item.getItemId(), -1 * item.getQuantity()));
+            });
+            if (dtos.isEmpty())
                 throw new OrderException(OrderErrorCode.INVALID_ITEM);
-            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(1).build());
-            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(),order.getPrice(),order.getCreatedAt());
-            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
+            kafkaTemplate.send("stock-change",
+                    ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(1).build());
+            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(), order.getPrice(),
+                    order.getCreatedAt());
+            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(
+                    order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
             kafkaTemplate.send("order-canceled-bs", bestSellerEvent);
             kafkaTemplate.send("order-canceled-st", statEvent);
             order.cancleOrder();
-        }
-        else
+        } else
             log.error("포트원 결제 취소 실패 - payment-service 로그 확인");
-        
-        return entityToSimpleDto(order);
+
+        return entityToDto(order);
     }
 
     // 결제 완료시점
@@ -231,19 +264,20 @@ public class OrderServiceImpl implements OrderService {
                 throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
                         "주문번호 : " + ev.getOrder().getOrderId() + "에 해당하는 주문이 없음");
             });
-            
+            order.setPaymentMethod(ev.getOrder().getMethod());
+
             log.info("결제 성공, 상품 증감 이벤트 발행");
             List<OrderItemDto> items = order.getOrderItems().stream()
-                                                                .map(this::itemEntityToDto)
-                                                                .collect(Collectors.toList());
+                    .map(this::itemEntityToDto)
+                    .collect(Collectors.toList());
             List<ToProductEventDto> dtos = new ArrayList<>();
-            items.forEach(item->{
+            items.forEach(item -> {
                 dtos.add(new ToProductEventDto(item.getItemId(), item.getQuantity()));
-            }); 
-            if(dtos.isEmpty())
+            });
+            if (dtos.isEmpty())
                 throw new OrderException(OrderErrorCode.INVALID_ITEM);
-            kafkaTemplate.send("stock-change", ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(-1).build());
-            
+            kafkaTemplate.send("stock-change",
+                    ToProductEvent.builder().orderId(order.getId()).dtos(dtos).check(-1).build());
 
         } catch (Exception e) {
             log.error("주문 실패", e);
@@ -252,7 +286,6 @@ public class OrderServiceImpl implements OrderService {
             throw e;
         }
     }
-
 
     @KafkaListener(topics = "stock-confirm", groupId = "product_group")
     @Transactional
@@ -269,8 +302,10 @@ public class OrderServiceImpl implements OrderService {
             order.setState(order.getState().next());
             log.info("주문 완료");
 
-            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(),order.getPrice(),order.getCreatedAt());
-            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
+            ToStatEvent statEvent = new ToStatEvent(order.getId(), order.getQuantity(), order.getPrice(),
+                    order.getCreatedAt());
+            ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(
+                    order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
             kafkaTemplate.send("order-complete-bestseller", bestSellerEvent);
             kafkaTemplate.send("order-complete-stat", statEvent);
         } catch (Exception e) {
@@ -280,7 +315,6 @@ public class OrderServiceImpl implements OrderService {
             throw e;
         }
     }
-
 
     // 주문 실패 처리 마무리
     @KafkaListener(topics = "order-failed-payment-refund", groupId = "payment_group")

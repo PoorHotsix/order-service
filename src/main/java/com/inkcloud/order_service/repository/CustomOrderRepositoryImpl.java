@@ -16,6 +16,7 @@ import com.inkcloud.order_service.domain.QOrderItem;
 import com.inkcloud.order_service.domain.QOrderShip;
 import com.inkcloud.order_service.enums.OrderSearchCategory;
 import com.inkcloud.order_service.enums.OrderState;
+import com.inkcloud.order_service.enums.PaymentMethod;
 import com.inkcloud.order_service.enums.SortDirection;
 import com.inkcloud.order_service.enums.SortField;
 import com.querydsl.core.types.OrderSpecifier;
@@ -40,15 +41,16 @@ public class CustomOrderRepositoryImpl implements CustomOrderRepository {
         BooleanExpression categoryFilter = searchCategoryEQ(condition.getKeywordCategory(), condition.getKeyword());
         BooleanExpression dateFilter = searchDateEQ(date);
         BooleanExpression stateFilter = searchStateEQ(condition.getStates());
+        BooleanExpression paymentFilter = searchPaymentEQ(condition.getPaymentMethods());
 
         List<Order> orders = qFactory.selectFrom(qOrder)
-                                    .where(categoryFilter, dateFilter, stateFilter)
-                                    .orderBy(getOrderSpecifier(sort))
-                                    .offset(page.getOffset())
-                                    .limit(page.getPageSize())
-                                    .fetch();
+                .where(categoryFilter, dateFilter, stateFilter, paymentFilter)
+                .orderBy(getOrderSpecifier(sort))
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
 
-        if(!orders.isEmpty()){
+        if (!orders.isEmpty()) {
             List<String> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
             qFactory.selectFrom(qOrderItem)
                     .where(qOrderItem.order.id.in(orderIds))
@@ -58,10 +60,10 @@ public class CustomOrderRepositoryImpl implements CustomOrderRepository {
                     .fetch();
         }
         Long total = qFactory.select(qOrder.count())
-                                .from(qOrder)
-                                .where(categoryFilter, dateFilter,stateFilter)
-                                .fetchOne();
-        return new PageImpl<>(orders, page, total != null? total : 0);
+                .from(qOrder)
+                .where(categoryFilter, dateFilter, stateFilter)
+                .fetchOne();
+        return new PageImpl<>(orders, page, total != null ? total : 0);
     }
 
     private BooleanExpression searchCategoryEQ(OrderSearchCategory category, String keyword) {
@@ -70,13 +72,13 @@ public class CustomOrderRepositoryImpl implements CustomOrderRepository {
 
         switch (category) {
             case ID:
-                return qOrder.id.eq(keyword);
+                return qOrder.id.contains(keyword);
             case MEMBER_EMAIL:
-                return qOrder.member.memberEmail.eq(keyword);
+                return qOrder.member.memberEmail.contains(keyword);
             case MEMBER_NAME:
-                return qOrder.member.memberName.eq(keyword);
+                return qOrder.member.memberName.contains(keyword);
             case RECEIVER:
-                return qOrder.orderShip.receiver.eq(keyword);
+                return qOrder.orderShip.receiver.contains(keyword);
             default:
                 return null;
         }
@@ -86,16 +88,25 @@ public class CustomOrderRepositoryImpl implements CustomOrderRepository {
         if (date == null || date.getStartDate() == null || date.getEndDate() == null)
             return null;
 
-        return qOrder.createdAt.between(date.getStartDate().atStartOfDay(), date.getEndDate().plusDays(1).atStartOfDay());
+        return qOrder.createdAt.between(date.getStartDate().atStartOfDay(),
+                date.getEndDate().plusDays(1).atStartOfDay());
     }
 
     private BooleanExpression searchStateEQ(List<OrderState> states) {
         if (states == null || states.isEmpty())
             return null;
-        
-        List<OrderState> filteredStates = states.stream().filter(state-> state!=OrderState.PENDING).collect(Collectors.toList());
+
+        List<OrderState> filteredStates = states.stream().filter(state -> state != OrderState.PENDING)
+                .collect(Collectors.toList());
 
         return qOrder.state.in(filteredStates);
+    }
+
+    private BooleanExpression searchPaymentEQ(List<PaymentMethod> pay) {
+        if (pay == null || pay.isEmpty())
+            return null;
+        
+        return qOrder.paymentMethod.in(pay);
     }
 
     private OrderSpecifier<?> getOrderSpecifier(OrderSortingCreteria sort) {

@@ -9,11 +9,15 @@ import com.inkcloud.order_service.condition.OrderSortingCreteria;
 import com.inkcloud.order_service.dto.OrderDto;
 import com.inkcloud.order_service.dto.OrderMemberDto;
 import com.inkcloud.order_service.dto.OrderReviewDto;
+import com.inkcloud.order_service.dto.UpdateOrdersRequestDto;
 import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
 import com.inkcloud.order_service.dto.event.OrderEventDto;
+import com.inkcloud.order_service.enums.OrderState;
 import com.inkcloud.order_service.service.OrderService;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +33,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 
 
@@ -69,15 +72,32 @@ public class OrderController {
     }
 
     @PutMapping
-    public ResponseEntity<OrderSimpleResponseDto> cancelOrder(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt){
+    public ResponseEntity<OrderDto> cancelOrder(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt){
         return new ResponseEntity<>(service.cancleOrder(orderId, jwt), HttpStatus.ACCEPTED);
     }
     
     @PatchMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<OrderSimpleResponseDto> updateOrder(@RequestParam(value = "order_id") String orderId, @AuthenticationPrincipal Jwt jwt) {
-        return new ResponseEntity<>(service.updateOrder(orderId, jwt), HttpStatus.ACCEPTED);
+    public ResponseEntity<OrderDto> updateOrder(@RequestParam(value = "order_id") String orderId,@RequestParam(value = "state") OrderState state, @AuthenticationPrincipal Jwt jwt) {
+        return new ResponseEntity<>(service.updateOrder(orderId, state, jwt), HttpStatus.ACCEPTED);
     }
+
+    // @PatchMapping("/all")
+    // @PreAuthorize("hasAuthority('ADMIN')")
+    // public ResponseEntity<List<OrderSimpleResponseDto>> updateOrder(@RequestParam(value = "order_id") List<String> orderId, @AuthenticationPrincipal Jwt jwt) {
+    //     return new ResponseEntity<>(service.updateOrder(orderId, jwt), HttpStatus.ACCEPTED);
+    // }
+    @PatchMapping("/all")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<OrderDto>> updateOrder(@RequestBody UpdateOrdersRequestDto request, @AuthenticationPrincipal Jwt jwt) {
+        return new ResponseEntity<>(service.updateOrder(request, jwt), HttpStatus.ACCEPTED);
+    }
+
+    // @PatchMapping("/all")
+    // @PreAuthorize("hasAuthority('ADMIN')")
+    // public ResponseEntity<List<OrderSimpleResponseDto>> cancelAllOrder(@RequestParam(value = "order_id") List<String> orderId, @AuthenticationPrincipal Jwt jwt) {
+    //     return new ResponseEntity<>(service.cancleOrder(orderId, jwt), HttpStatus.ACCEPTED);
+    // }
     
     
 
