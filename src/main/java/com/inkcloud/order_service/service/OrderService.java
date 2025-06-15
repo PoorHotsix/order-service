@@ -25,6 +25,7 @@ import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.OrderShipDto;
 import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
 import com.inkcloud.order_service.dto.event.OrderEventDto;
+import com.inkcloud.order_service.dto.event.alert.ToAlertServiceEvent;
 import com.inkcloud.order_service.enums.OrderState;
 
 public interface OrderService {
@@ -74,6 +75,25 @@ public interface OrderService {
                                         )
                             .createdAt(dto.getCreatedAt() != null? dto.getCreatedAt() : LocalDateTime.now())
                             .updatedAt(LocalDateTime.now())
+                            .build();
+    }
+
+    default ToAlertServiceEvent entityToAlertDto(Order order){
+        return ToAlertServiceEvent.builder()
+                            .id(order.getId())
+                            .state(order.getState())
+                            .createdAt(order.getCreatedAt())
+                            .price(order.getPrice())
+                            .quantity(order.getQuantity())
+                            .method(order.getPaymentMethod())
+                            .orderItems(order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()))
+                            .orderShip(shipEntityToDto(order.getOrderShip()))
+                            .member(MemberDto.builder()
+                                            .memberEmail(order.getMember().getMemberEmail())
+                                            .memberContact(order.getMember().getMemberContact())
+                                            .memberName(order.getMember().getMemberName())
+                                            .build()
+                            )
                             .build();
     }
 

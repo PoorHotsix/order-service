@@ -29,9 +29,9 @@ import com.inkcloud.order_service.dto.UpdateOrdersRequestDto;
 import com.inkcloud.order_service.dto.child.MemberDto;
 import com.inkcloud.order_service.dto.child.OrderItemDto;
 import com.inkcloud.order_service.dto.child.PaymentDto;
-import com.inkcloud.order_service.dto.common.OrderSimpleResponseDto;
 import com.inkcloud.order_service.dto.event.OrderEvent;
 import com.inkcloud.order_service.dto.event.OrderEventDto;
+import com.inkcloud.order_service.dto.event.alert.ToAlertServiceEvent;
 import com.inkcloud.order_service.dto.event.bestseller.ToBestSellerEvent;
 import com.inkcloud.order_service.dto.event.product.FromProductEvent;
 import com.inkcloud.order_service.dto.event.product.ToProductEvent;
@@ -306,8 +306,12 @@ public class OrderServiceImpl implements OrderService {
                     order.getCreatedAt());
             ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(
                     order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
+            ToAlertServiceEvent alertEvent = entityToAlertDto(order);
+            
             kafkaTemplate.send("order-complete-bestseller", bestSellerEvent);
             kafkaTemplate.send("order-complete-stat", statEvent);
+            kafkaTemplate.send("order-complete-alert", alertEvent);
+
         } catch (Exception e) {
             log.error("주문 실패", e);
             // 주문 완료 처리 오류시
