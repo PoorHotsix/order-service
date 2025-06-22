@@ -299,6 +299,13 @@ public class OrderServiceImpl implements OrderService {
                 throw new OrderException(OrderErrorCode.FAILED_SUCCCESS_ORDER,
                         "주문번호 : " + ev.getOrderId() + "에 해당하는 주문이 없음");
             });
+            if (!ev.getIsSuccessful()) {
+                log.info("상품 재고 증감 실패! 결제 취소 이벤트 발행");
+                order.setState(OrderState.FAILED);
+                kafkaTemplate.send("order-failed", ev);
+                return;
+            }
+
             order.setState(order.getState().next());
             log.info("주문 완료");
 
@@ -307,7 +314,7 @@ public class OrderServiceImpl implements OrderService {
             ToBestSellerEvent bestSellerEvent = new ToBestSellerEvent(
                     order.getOrderItems().stream().map(this::itemEntityToDto).collect(Collectors.toList()));
             ToAlertServiceEvent alertEvent = entityToAlertDto(order);
-            
+
             kafkaTemplate.send("order-complete-bestseller", bestSellerEvent);
             kafkaTemplate.send("order-complete-stat", statEvent);
             kafkaTemplate.send("order-complete-alert", alertEvent);
